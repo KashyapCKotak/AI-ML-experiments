@@ -1,13 +1,16 @@
-package janeStreet;
+package scrabble.build;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.TreeMap;
+import java.util.TreeSet;
+
 
 class SeqWord{
 	public ArrayList<SeqWord> prev=new ArrayList<SeqWord>();
@@ -32,19 +35,23 @@ class SeqWord{
 }
 
 public class ScrabbleBuild {
-	
+	public static char[][] wordMatrix=new char[6][6];
+	public static ArrayList<ArrayList<ArrayList<Integer>>> pathMatrix=new ArrayList<ArrayList<ArrayList<Integer>>>();
 	public static HashMap<String,SeqWord> wordList=new HashMap<String,SeqWord>();
-	
 	HashSet<Character> consonants=new HashSet<Character>() {
 		{
 			add('B');add('C');add('D');add('F');add('G');add('H');add('J');add('K');add('L');add('M');add('N');add('P');add('Q');add('R');add('S');add('T');add('V');add('W');add('X');add('Y');add('Z');
 		}
 	};
-	
+	static Comparator<String> comparator = new Comparator<String>() {
+		@Override
+		public int compare(String s1, String s2) {
+			return getWordScore(s2)-getWordScore(s1);//Word with more score is smaller in ascending order
+		}
+	};
 	public static int getWordScore(String word){
 		Map<Character,Integer> letterScores=new HashMap<Character,Integer>(){
-			{put('a',1);put('b',3);put('c',3);put('d',2);put('e',1);put('f',4);put('g',2);put('h',4);put('i',1);put('j',8);put('k',5);put('l',1);put('m',3);
-			put('n',1);put('o',1);put('p',3);put('q',10);put('r',1);put('s',1);put('t',1);put('u',1);put('v',4);put('w',4);put('x',8);put('y',4);put('z',10);
+			{put('a',1);put('b',3);put('c',3);put('d',2);put('e',1);put('f',4);put('g',2);put('h',4);put('i',1);put('j',8);put('k',5);put('l',1);put('m',3);put('n',1);put('o',1);put('p',3);put('q',10);put('r',1);put('s',1);put('t',1);put('u',1);put('v',4);put('w',4);put('x',8);put('y',4);put('z',10);
 			}};
 		int score=0;
 		int wordLength=word.length();
@@ -58,6 +65,8 @@ public class ScrabbleBuild {
 		for(String word : words) {
 			char lastChar='&';
 			boolean skipFlag=false;
+			if(word.charAt(0)=='u'||word.charAt(word.length()-1)=='u')
+				continue;
 			for(int i=0;i<word.length();i++) {
 				char currChar=word.charAt(i);
 				if((currChar==lastChar) || (lastChar=='u' && currChar=='i') || (lastChar=='i' && currChar=='u')
@@ -70,7 +79,7 @@ public class ScrabbleBuild {
 				continue;
 			}
 			int score=getWordScore(word);
-			if(score>15)
+			if(score>10)
 				listWithScores.put(word, score);
 		}		
 	}
@@ -129,6 +138,106 @@ public class ScrabbleBuild {
 //		return seqWords;
 //	}
 	
+	public static void getListWithCharKeys(HashMap<String,Integer> listWithScores, HashMap<Character,TreeSet<String>> listWithCharKeys) {
+		for(String word : listWithScores.keySet()) {
+			if(listWithCharKeys.get(word.charAt(0))==null) {
+				TreeSet<String> currSet=new TreeSet<String>(comparator);
+				currSet.add(word);
+				listWithCharKeys.put(word.charAt(0), currSet);
+			} else {
+				TreeSet<String> currSet=listWithCharKeys.get(word.charAt(0));
+				currSet.add(word);
+				listWithCharKeys.put(word.charAt(0), currSet);
+			}
+		}
+	}
+	
+	public static void printMatrix() {
+		System.out.println("Char Matrix");
+		for(int i=0;i<6;i++) {
+			for(int j=0;j<6;j++) {
+				System.out.print(" "+wordMatrix[i][j]);
+			}System.out.println();
+		}
+		System.out.println("Path Matrix");
+		for(int j=0;j<6;j++) {
+			for(int i=0;i<6;i++) {
+				ArrayList<ArrayList<Integer>> currCol=pathMatrix.get(i);
+				ArrayList<Integer> rowCell=currCol.get(j);
+				System.out.print("[");
+				for(Integer cell : rowCell) {
+					System.out.print(cell+",");
+				}
+				System.out.print("]\t");
+			}System.out.println();
+		}
+	}
+	
+	public static void makeMatrix() {
+		for(int i=0;i<6;i++) {
+			for(int j=0;j<6;j++) {
+				wordMatrix[i][j]='-';
+			}
+		}
+		for(int j=0;j<6;j++) {
+			ArrayList<ArrayList<Integer>> currCol=new ArrayList<ArrayList<Integer>>();
+			for(int i=0;i<6;i++) {
+				ArrayList<Integer> currRowCell=new ArrayList<Integer>();
+				currRowCell.add(-99);
+				currCol.add(currRowCell);
+			}
+			pathMatrix.add(currCol);
+		}
+		wordMatrix[0][1]='o';wordMatrix[0][3]='e';wordMatrix[0][5]='u';
+		wordMatrix[1][0]='i';wordMatrix[1][2]='a';wordMatrix[1][4]='a';
+		wordMatrix[2][1]='e';wordMatrix[2][3]='i';wordMatrix[2][5]='o';
+		wordMatrix[3][0]='a';wordMatrix[3][2]='o';wordMatrix[3][4]='e';
+		wordMatrix[4][1]='e';wordMatrix[4][3]='a';wordMatrix[4][5]='i';
+		wordMatrix[5][0]='u';wordMatrix[5][2]='i';wordMatrix[5][4]='o';
+		System.out.println("Matrix reset");
+	}
+	
+	public static HashMap<Integer,ArrayList<int[]>> findStartEndIndex(String word, int mat) {
+		HashMap<Integer,ArrayList<int[]>> indexes=new HashMap<Integer, ArrayList<int[]>>();
+		indexes.put(0,new ArrayList<int[]>());indexes.put(1,new ArrayList<int[]>());
+		char startChar=word.charAt(0),endChar=word.charAt(word.length()-1);
+		for(int i=mat;i<mat+3;i++) {
+			for(int j=mat;j<mat+3;j++) {
+				int[] index=new int[2];
+				index[0]=i;index[1]=j;
+				if(wordMatrix[i][j]==startChar) {
+					indexes.get(0).add(index);
+				}
+				if(wordMatrix[i][j]==endChar) {
+					indexes.get(1).add(index);
+				}
+				if(wordMatrix[i][j]=='-') {
+					indexes.get(0).add(index);
+					indexes.get(1).add(index);
+				}
+			}
+		}
+		return indexes;
+	}
+	
+	public static void makeSeq(TreeMap<Integer,ArrayList<String>> listWithScoreKeys, HashMap<Character,TreeSet<String>> listWithCharKeys, HashMap<String,Integer> listWithScores) {
+		int[] scoreKeys=listWithScoreKeys.keySet().stream().mapToInt(Integer::intValue).toArray();
+		makeMatrix();
+		printMatrix();
+		for(int i=(scoreKeys.length-1);i>=0;i--) {
+			System.out.println("current score:"+scoreKeys[i]);
+			ArrayList<String> maxWords=listWithScoreKeys.get(scoreKeys[i]);
+			for(String maxWord : maxWords) {// for every max score word. Starting point. Consider for first matrix only
+				HashMap<Integer,ArrayList<int[]>> indexes=findStartEndIndex(maxWord,0);
+				System.out.println("for word"+maxWord);
+				if(indexes.get(0).size()==0 || indexes.get(1).size()==0)
+					continue;
+				//got start and end indexes. Go ahead
+				
+			}
+		}
+	}
+	
 	public static void get3WordSeq(TreeMap<Integer,ArrayList<String>> listWithScoreKeys, HashMap<String, SeqWord> wordList) {
 		int[] scoreKeys=listWithScoreKeys.keySet().stream().mapToInt(Integer::intValue).toArray();
 		int currMaxScoreIntKey=listWithScoreKeys.lastKey();
@@ -157,7 +266,6 @@ public class ScrabbleBuild {
 			System.out.println("Next Max:"+(scoreKeys[scoreKeys.length-count]));
 			currMaxScoreIntKey=scoreKeys[scoreKeys.length-count];
 		}
-//		return seqWords;
 	}
 
 
@@ -180,11 +288,19 @@ public class ScrabbleBuild {
 		System.out.println("All Score Keys:"+listWithScoreKeys.keySet());
 		System.out.println("Number of words with score 19:"+listWithScoreKeys.get(19).size());
 		System.out.println("Max Score:"+listWithScoreKeys.lastKey());
-		get3WordSeq(listWithScoreKeys,wordList);
-		System.out.println("Sample Sequence:");
-		System.out.println(wordList.get("oxyphenbutazone").next.get(0).word);
-		System.out.println(wordList.get("oxyphenbutazone").next.get(1).word);
-		System.out.println(wordList.get("oxyphenbutazone").next.get(2).word);		
+		HashMap<Character,TreeSet<String>> listWithCharKeys=new HashMap<Character, TreeSet<String>>();
+		getListWithCharKeys(listWithScores, listWithCharKeys);
+		System.out.println("Sample list with char keys:");
+		System.out.println("Word with e:"+listWithCharKeys.get('e'));
+//		for(String word : listWithCharKeys.get('z')) {
+//			System.out.println("Word:"+word+" score:"+listWithScores.get(word));
+//		}
+		makeSeq(listWithScoreKeys, listWithCharKeys, listWithScores);
+//		get3WordSeq(listWithScoreKeys,wordList);
+//		System.out.println("Sample Sequence:");
+//		System.out.println(wordList.get("oxyphenbutazone").next.get(0).word);
+//		System.out.println(wordList.get("oxyphenbutazone").next.get(1).word);
+//		System.out.println(wordList.get("oxyphenbutazone").next.get(2).word);		
 	}
 }
 
