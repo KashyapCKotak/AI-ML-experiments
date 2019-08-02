@@ -1,4 +1,4 @@
-package janeStreet;
+package scrabble.build;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -37,6 +37,7 @@ class SeqWord{
 public class ScrabbleBuild {
 	public static int matCounter=0;
 	public static char[][] wordMatrix=new char[6][6];
+//	public static TreeMap<Integer,Integer> wordMap=new TreeMap<Integer, Integer>();//<CharIndex,Position>
 	public static HashMap<Integer,char[][]> freezedCharMatrix=new HashMap<Integer,char[][]>();
 	public static ArrayList<ArrayList<ArrayList<Integer>>> pathMatrix=new ArrayList<ArrayList<ArrayList<Integer>>>();
 	public static HashMap<String,SeqWord> wordList=new HashMap<String,SeqWord>();
@@ -178,20 +179,27 @@ public class ScrabbleBuild {
 				System.out.print(" "+wordMatrix[i][j]);
 			}System.out.println();
 		}
-//		System.out.println("Path Matrix");
-//		for(int j=0;j<6;j++) {
-//			for(int i=0;i<6;i++) {
-//				ArrayList<ArrayList<Integer>> currCol=pathMatrix.get(i);
-//				ArrayList<Integer> rowCell=currCol.get(j);
-//				System.out.print("[");
-//				for(Integer cell : rowCell) {
-//					System.out.print(cell+",");
-//				}
-//				System.out.print("]\t");
-//			}System.out.println();
-//		}
+		System.out.println("Path Matrix");
+		for(int j=0;j<6;j++) {
+			for(int i=0;i<6;i++) {
+				ArrayList<ArrayList<Integer>> currCol=pathMatrix.get(i);
+				ArrayList<Integer> rowCell=currCol.get(j);
+				System.out.print("[");
+				for(Integer cell : rowCell) {
+					System.out.print(cell+",");
+				}
+				System.out.print("]\t");
+			}System.out.println();
+		}
 	}
-	
+//	public static void resetSeqMatrix() {
+//		for(int i=0;i<6;i++) {
+//			for(int j=0;j<6;j++) {
+//				seqMatrix[i][j]=1000;
+//			}
+//		}
+//		System.out.println("seq matrix reset");
+//	}
 	public static void makeMatrix() {
 		for(int i=0;i<6;i++) {
 			for(int j=0;j<6;j++) {
@@ -276,6 +284,38 @@ public class ScrabbleBuild {
 		return neighbours;
 	}
 	
+	public static boolean canDetele(int x,int y,int mat,int currIndex) {
+		System.out.println("charindex to check for delete:"+currIndex);
+		if(pathMatrix.get(y).get(x).get(0)==mat) {
+			int i=0;
+			for(int charInd : pathMatrix.get(y).get(x)) {
+				if(i==0) {
+					i++;
+					continue;
+				}
+				if(charInd<currIndex)
+					return false;
+			}
+		}
+		return true;
+	}
+	
+	public static void pushPathMatrix(int x, int y, int mat, int charIndex) {
+		if(pathMatrix.get(y).get(x).get(0)==-99) {
+			pathMatrix.get(y).get(x).clear();
+			pathMatrix.get(y).get(x).add(mat);
+		}
+		pathMatrix.get(y).get(x).add(charIndex);
+	}
+	public static void popPathMatrix(int x, int y, int mat, int charIndex) {
+		if(pathMatrix.get(y).get(x).get(0)==mat) {
+			int ind=pathMatrix.get(y).get(x).indexOf(charIndex);
+			if(ind!=0 && ind!=-1)
+				pathMatrix.get(y).get(x).remove(ind);
+			if(pathMatrix.get(y).get(x).size()==1)
+				pathMatrix.get(y).get(x).set(0, -99);
+		}
+	}
 	
 	
 	public static boolean fitSeq(String word,int x,int y,int charIndex, int mat){
@@ -286,6 +326,8 @@ public class ScrabbleBuild {
 		int posId=getPos(x,y);
 		if(charIndex==0){
 			wordMatrix[x][y]=word.charAt(charIndex);
+			pushPathMatrix(x, y, mat, charIndex);
+//			wordMap.put(charIndex, posId);
 		}
 		if(charIndex==(word.length()-1)){
 			System.out.println("The current end posId:"+posId);
@@ -306,18 +348,34 @@ public class ScrabbleBuild {
 		else if (charIndex==(word.length()-1) && (matWiseEndMaskList.get(mat)==posId))
 			return false;
 		for(int[] next : nextPos){
+			if(word.equals("hydroxyzines"))
+				System.out.println("here");
+			int nextPosId=getPos(next[0], next[1]);
+//			wordMap.put((charIndex+1), nextPosId);
 			System.out.println("Next pos:"+next[0]+","+next[1]);
 			wordMatrix[next[0]][next[1]]=word.charAt(charIndex+1);
+			pushPathMatrix(next[0],next[1], mat, (charIndex+1));
 			printMatrix();
 			result=fitSeq(word, next[0], next[1], charIndex+1, mat);
-			System.out.println("returned to:"+(word.charAt(charIndex))+" with result:"+result);
-			if(!result && consonants.contains(word.charAt(charIndex+1)))
+			System.out.println("returned to:"+(word.charAt(charIndex))+" with result:"+result+" charIndes:"+charIndex);
+			if(canDetele(next[0], next[1], mat, (charIndex+1)) && (!result) && consonants.contains(word.charAt(charIndex+1))) {
 				wordMatrix[next[0]][next[1]]='-';
+				popPathMatrix(next[0], next[1], mat, (charIndex+1));
+				System.out.println("deleted here");
+			}
 			else if(result)
 				break;
 		}
-		if(!result && consonants.contains(wordMatrix[x][y]))
+		if(canDetele(x, y, mat, (charIndex)) && (!result) && consonants.contains(wordMatrix[x][y])) {
+			System.out.println("char index:"+charIndex);
+			System.out.println("deleting here");
+			if(word.equals("hydroxyzines"))
+				System.out.println("here");
 			wordMatrix[x][y]='-';
+			popPathMatrix(x, y, mat, charIndex);
+//			wordMap.remove((charIndex));
+			printMatrix();
+		}
 		return result;
 	}
 
