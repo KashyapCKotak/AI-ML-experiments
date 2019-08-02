@@ -1,4 +1,4 @@
-package scrabble.build;
+package janeStreet;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -39,6 +39,7 @@ public class ScrabbleBuild {
 	public static char[][] wordMatrix=new char[6][6];
 //	public static TreeMap<Integer,Integer> wordMap=new TreeMap<Integer, Integer>();//<CharIndex,Position>
 	public static HashMap<Integer,char[][]> freezedCharMatrix=new HashMap<Integer,char[][]>();
+	public static HashSet<Character> usedConsonants=new HashSet<Character>();
 	public static ArrayList<ArrayList<ArrayList<Integer>>> pathMatrix=new ArrayList<ArrayList<ArrayList<Integer>>>();
 	public static HashMap<String,SeqWord> wordList=new HashMap<String,SeqWord>();
 	public static HashMap<String,Integer> listWithScores=new HashMap<String,Integer>();
@@ -260,32 +261,31 @@ public class ScrabbleBuild {
 	public static ArrayList<int[]> getNext(int x, int y, char nextChar){
 		ArrayList<int[]> neighbours=new ArrayList<>();
 		boolean isNextVowel=false;boolean isCurrVowel=false;
-		System.out.println("finding next pos for char:"+nextChar);
+		System.out.println("finding next pos for char:"+nextChar+" already?:"+usedConsonants.contains(nextChar));
 		if(!consonants.contains(nextChar))//it is vowel
 			isNextVowel=true;
 		if(!consonants.contains(wordMatrix[x][y]))
 			isCurrVowel=true;
-		if((x!=5 && y!=0) && (wordMatrix[x+1][y-1]=='-' || wordMatrix[x+1][y-1]==nextChar) && !(isCurrVowel ^ isNextVowel))
+		if((x!=5 && y!=0) && (wordMatrix[x+1][y-1]=='-' || wordMatrix[x+1][y-1]==nextChar) && !(isCurrVowel ^ isNextVowel) && !usedConsonants.contains(nextChar))
 			neighbours.add(new int[]{x+1,y-1});
-		if(y!=0 && (wordMatrix[x][y-1]=='-' || wordMatrix[x][y-1]==nextChar) && (!isNextVowel || wordMatrix[x][y-1]==nextChar))
+		if(y!=0 && (wordMatrix[x][y-1]=='-' || wordMatrix[x][y-1]==nextChar) && (!isNextVowel || wordMatrix[x][y-1]==nextChar)  && !usedConsonants.contains(nextChar))
 			neighbours.add(new int[]{x,y-1});
-		if((x!=0 && y!=0) && (wordMatrix[x-1][y-1]=='-' || wordMatrix[x-1][y-1]==nextChar) && !(isCurrVowel ^ isNextVowel))
+		if((x!=0 && y!=0) && (wordMatrix[x-1][y-1]=='-' || wordMatrix[x-1][y-1]==nextChar) && !(isCurrVowel ^ isNextVowel)  && !usedConsonants.contains(nextChar))
 			neighbours.add(new int[]{x-1,y-1});
-		if(x!=0 && (wordMatrix[x-1][y]=='-' || wordMatrix[x-1][y]==nextChar) && (!isNextVowel || wordMatrix[x-1][y]==nextChar))
+		if(x!=0 && (wordMatrix[x-1][y]=='-' || wordMatrix[x-1][y]==nextChar) && (!isNextVowel || wordMatrix[x-1][y]==nextChar)  && !usedConsonants.contains(nextChar))
 			neighbours.add(new int[]{x-1,y});
-		if((x!=0 && y!=5) && (wordMatrix[x-1][y+1]=='-' || wordMatrix[x-1][y+1]==nextChar) && !(isCurrVowel ^ isNextVowel))
+		if((x!=0 && y!=5) && (wordMatrix[x-1][y+1]=='-' || wordMatrix[x-1][y+1]==nextChar) && !(isCurrVowel ^ isNextVowel)  && !usedConsonants.contains(nextChar))
 			neighbours.add(new int[]{x-1,y+1});
-		if(y!=5 && (wordMatrix[x][y+1]=='-' || wordMatrix[x][y+1]==nextChar) && (!isNextVowel || wordMatrix[x][y+1]==nextChar))
+		if(y!=5 && (wordMatrix[x][y+1]=='-' || wordMatrix[x][y+1]==nextChar) && (!isNextVowel || wordMatrix[x][y+1]==nextChar)  && !usedConsonants.contains(nextChar))
 			neighbours.add(new int[]{x,y+1});
-		if((x!=5 && y!=5) && (wordMatrix[x+1][y+1]=='-' || wordMatrix[x+1][y+1]==nextChar) && !(isCurrVowel ^ isNextVowel))
+		if((x!=5 && y!=5) && (wordMatrix[x+1][y+1]=='-' || wordMatrix[x+1][y+1]==nextChar) && !(isCurrVowel ^ isNextVowel)  && !usedConsonants.contains(nextChar))
 			neighbours.add(new int[]{x+1,y+1});
-		if(x!=5 && (wordMatrix[x+1][y]=='-' || wordMatrix[x+1][y]==nextChar) && (!isNextVowel || wordMatrix[x+1][y]==nextChar))
+		if(x!=5 && (wordMatrix[x+1][y]=='-' || wordMatrix[x+1][y]==nextChar) && (!isNextVowel || wordMatrix[x+1][y]==nextChar)  && !usedConsonants.contains(nextChar))
 			neighbours.add(new int[]{x+1,y});
 		return neighbours;
 	}
 	
 	public static boolean canDetele(int x,int y,int mat,int currIndex) {
-		System.out.println("charindex to check for delete:"+currIndex);
 		if(pathMatrix.get(y).get(x).get(0)==mat) {
 			int i=0;
 			for(int charInd : pathMatrix.get(y).get(x)) {
@@ -293,10 +293,13 @@ public class ScrabbleBuild {
 					i++;
 					continue;
 				}
-				if(charInd<currIndex)
+				if(charInd<currIndex){
+					System.out.println("charindex to check for delete:"+currIndex+" x:"+x+" y:"+y+" currChar at x,y:"+pathMatrix.get(y).get(x)+" result=false");
 					return false;
+				}
 			}
 		}
+		System.out.println("charindex to check for delete:"+currIndex+" x:"+x+" y:"+y+" currChar at x,y value:"+pathMatrix.get(y).get(x)+" result=true");
 		return true;
 	}
 	
@@ -308,24 +311,33 @@ public class ScrabbleBuild {
 		pathMatrix.get(y).get(x).add(charIndex);
 	}
 	public static void popPathMatrix(int x, int y, int mat, int charIndex) {
+		System.out.println("entered pop. x:"+x+" y:"+y+" mat:"+mat+" charIndex:"+charIndex);
 		if(pathMatrix.get(y).get(x).get(0)==mat) {
-			int ind=pathMatrix.get(y).get(x).indexOf(charIndex);
+			int ind=pathMatrix.get(y).get(x).lastIndexOf(charIndex);
+			System.out.println("in pop, got index:"+ind+" for cahrIndex:"+charIndex);
 			if(ind!=0 && ind!=-1)
 				pathMatrix.get(y).get(x).remove(ind);
-			if(pathMatrix.get(y).get(x).size()==1)
+			if(pathMatrix.get(y).get(x).size()==1){
 				pathMatrix.get(y).get(x).set(0, -99);
+			}
+			if(pathMatrix.get(y).get(x).size()==1 && pathMatrix.get(y).get(x).get(0)==mat && consonants.contains(wordMatrix[x][y])){
+				System.out.println("removing from used constants "+wordMatrix[x][y]);
+				usedConsonants.remove(wordMatrix[x][y]);
+			}
 		}
 	}
 	
 	
 	public static boolean fitSeq(String word,int x,int y,int charIndex, int mat){
 		boolean result=false;
-		System.out.println("finding in word "+word+" for char index:"+charIndex);
+		System.out.println("finding in word "+word+" for char index:"+charIndex+" in mat:"+mat);
 		System.out.println("Curr pos x:"+x+",y:"+y);
 		ArrayList<int[]> nextPos=null;
 		int posId=getPos(x,y);
 		if(charIndex==0){
 			wordMatrix[x][y]=word.charAt(charIndex);
+			if(consonants.contains(word.charAt(charIndex)))
+				usedConsonants.add(word.charAt(charIndex));
 			pushPathMatrix(x, y, mat, charIndex);
 //			wordMap.put(charIndex, posId);
 		}
@@ -354,28 +366,32 @@ public class ScrabbleBuild {
 //			wordMap.put((charIndex+1), nextPosId);
 			System.out.println("Next pos:"+next[0]+","+next[1]);
 			wordMatrix[next[0]][next[1]]=word.charAt(charIndex+1);
+			if(consonants.contains(word.charAt(charIndex+1)))
+				usedConsonants.add(word.charAt(charIndex+1));
 			pushPathMatrix(next[0],next[1], mat, (charIndex+1));
 			printMatrix();
 			result=fitSeq(word, next[0], next[1], charIndex+1, mat);
-			System.out.println("returned to:"+(word.charAt(charIndex))+" with result:"+result+" charIndes:"+charIndex);
+			System.out.println("returned to:"+(word.charAt(charIndex))+" with result:"+result+" charIndes:"+charIndex+" in mat:"+mat);
+			if(!result)
+				popPathMatrix(next[0], next[1], mat, (charIndex+1));
 			if(canDetele(next[0], next[1], mat, (charIndex+1)) && (!result) && consonants.contains(word.charAt(charIndex+1))) {
 				wordMatrix[next[0]][next[1]]='-';
-				popPathMatrix(next[0], next[1], mat, (charIndex+1));
 				System.out.println("deleted here");
 			}
 			else if(result)
 				break;
 		}
-		if(canDetele(x, y, mat, (charIndex)) && (!result) && consonants.contains(wordMatrix[x][y])) {
+		if(!result)
+			popPathMatrix(x, y, mat, charIndex);
+		if(canDetele(x, y, mat, (charIndex)) && (!result) && consonants.contains(wordMatrix[x][y]) && charIndex==0) {
 			System.out.println("char index:"+charIndex);
 			System.out.println("deleting here");
 			if(word.equals("hydroxyzines"))
 				System.out.println("here");
 			wordMatrix[x][y]='-';
-			popPathMatrix(x, y, mat, charIndex);
 //			wordMap.remove((charIndex));
-			printMatrix();
 		}
+		printMatrix();
 		return result;
 	}
 
@@ -416,7 +432,10 @@ public class ScrabbleBuild {
 					matCounter++;
 					for(String newMaxWord : newMaxWordSet){
 						result=false;
+						char[][] currMatrix= wordMatrix.clone();
 						result=makeSeq(newMaxWord,mat+1,startIndex);
+						if(!result)
+							wordMatrix=currMatrix.clone();
 						System.out.println("got child result for mat:"+(mat+1)+" as:"+result+" for word:"+newMaxWord);
 						if(result)
 							break;
@@ -428,10 +447,10 @@ public class ScrabbleBuild {
 				}
 				if(result)// got true from child. not need to check for other endings
 					break;
-				else if(!result && mat!=0 && mat!=1)//got false from child after all childs
-					wordMatrix=freezedCharMatrix.get(mat-2);
-				else if(!result && mat==1)
-					makeMatrix();
+//				else if(!result && mat!=0 && mat!=1)//got false from child after all childs
+//					wordMatrix=freezedCharMatrix.get(mat-2);
+//				else if(!result && mat==1)
+//					makeMatrix();
 			}
 			if(result){// got true from child. not need to check for other startings
 				break;
